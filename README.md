@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rmerah/megam-arg-docker/releases/latest">
-    <img src="https://img.shields.io/github/v/release/rmerah/megam-arg-docker?label=T%C3%A9l%C3%A9charger&style=for-the-badge&color=blue" alt="Télécharger">
+  <a href="https://github.com/rmerah/MEGAM/releases/latest">
+    <img src="https://img.shields.io/github/v/release/rmerah/MEGAM?label=T%C3%A9l%C3%A9charger&style=for-the-badge&color=blue" alt="Télécharger">
   </a>
 </p>
 
@@ -18,7 +18,7 @@
 
 ## Installation sur Windows (recommandé)
 
-**1.** Téléchargez l'installeur : **[MEGAM-ARG-Detection-Setup-3.2.exe](https://github.com/rmerah/megam-arg-docker/releases/latest/download/MEGAM-ARG-Detection-Setup-3.2.exe)**
+**1.** Téléchargez l'installeur : **[MEGAM-ARG-Detection-Setup-3.2.exe](https://github.com/rmerah/MEGAM/releases/latest/download/MEGAM-ARG-Detection-Setup-3.2.exe)**
 
 **2.** Double-cliquez sur le fichier téléchargé
 
@@ -47,8 +47,8 @@ sudo usermod -aG docker $USER
 
 **2.** Téléchargez et lancez :
 ```bash
-git clone https://github.com/rmerah/megam-arg-docker.git
-cd megam-arg-docker
+git clone https://github.com/rmerah/MEGAM.git
+cd MEGAM
 cp .env.example .env
 docker compose -f docker/docker-compose.yml up -d
 ```
