@@ -78,6 +78,9 @@ COPY src/python/     /app/python/
 # Rendre le pipeline exécutable
 RUN chmod +x /app/pipeline/*.sh
 
+# Forcer GNU parallel à utiliser bash (sinon dash plante en mode --pipe avec Prokka)
+ENV PARALLEL_SHELL=/bin/bash
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration nginx
 # ─────────────────────────────────────────────────────────────────────────────

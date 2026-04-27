@@ -44,6 +44,9 @@
         <img src="logo.png" alt="MEGAM ARG Detection" class="h-12 w-auto cursor-pointer" onclick="openAboutModal()" title="À propos de MEGAM ARG Detection">
       </div>
       <nav class="flex gap-1 items-center flex-wrap">
+        <a id="running-jobs-indicator" href="#" class="hidden bg-orange-500 text-white px-3 py-2 rounded font-medium hover:bg-orange-600 transition items-center gap-2 animate-pulse">
+          <span class="animate-spin">⚙️</span> <span id="running-count">0</span> en cours
+        </a>
         <a href="form_launch_analysis.html" class="bg-blue-700 text-white px-4 py-2 rounded font-medium hover:bg-blue-600 transition text-sm">
           Nouvelle Analyse
         </a>
@@ -519,6 +522,27 @@
     function openAboutModal() { document.getElementById('about-modal').classList.remove('hidden'); }
     function closeAboutModal() { document.getElementById('about-modal').classList.add('hidden'); }
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAboutModal(); });
+
+    async function checkRunningJobs() {
+      try {
+        const response = await fetch('/api/jobs?limit=50');
+        const data = await response.json();
+        const runningJobs = (data.jobs || []).filter(j => j.status === 'RUNNING');
+        const indicator = document.getElementById('running-jobs-indicator');
+        const countEl = document.getElementById('running-count');
+        if (runningJobs.length > 0) {
+          indicator.classList.remove('hidden');
+          indicator.classList.add('flex');
+          countEl.textContent = runningJobs.length;
+          indicator.href = `dashboard_monitoring.html?job_id=${runningJobs[0].job_id}`;
+        } else {
+          indicator.classList.add('hidden');
+          indicator.classList.remove('flex');
+        }
+      } catch (e) { /* silent */ }
+    }
+    checkRunningJobs();
+    setInterval(checkRunningJobs, 15000);
   </script>
 </body>
 </html>

@@ -20,6 +20,11 @@ src/pipeline/data/
 .vscode/
 .idea/
 
+# Claude Code
+CLAUDE.md
+.claude/
+ENTRETIEN_SIMULATION.md
+
 # OS
 .DS_Store
 Thumbs.db

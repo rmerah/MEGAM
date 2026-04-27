@@ -1084,6 +1084,7 @@ DATABASES_CONFIG = {
         "name": "MLST",
         "description": "Multi-Locus Sequence Typing",
         "path": "mlst_db",
+        "abs_path": "/opt/conda/envs/megam_arg/db",
         "check_files": ["pubmlst"],
         "size_estimate": "~200 MB",
         "update_cmd": "download_mlst_db"
@@ -1267,23 +1268,22 @@ def _download_kma_database(db_key: str, db_path: Path):
     _update_download_progress(db_key, status="downloading", progress=-1,
                               message="Recherche des bases abricate...", speed="")
 
-    # Trouver le répertoire des bases abricate via mamba run
     abricate_db_dir = None
-    try:
-        result = subprocess.run(
-            ["mamba", "run", "--no-banner", "-n", "abricate_env", "abricate", "--datadir"],
-            capture_output=True, text=True, timeout=30
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            candidate = Path(result.stdout.strip())
-            if candidate.is_dir():
-                abricate_db_dir = candidate
-                logger.info(f"[DB Download] kma: abricate trouvé dans abricate_env")
-    except Exception as e:
-        logger.warning(f"[DB Download] kma: abricate --datadir failed: {e}")
+    candidates = [
+        Path("/opt/conda/envs/abricate_env/db"),
+        Path("/opt/conda/envs/megam_arg/db"),
+    ]
+    for candidate in candidates:
+        if (candidate / "resfinder" / "sequences").exists():
+            abricate_db_dir = candidate
+            logger.info(f"[DB Download] kma: bases abricate trouvées dans {candidate}")
+            break
 
     if not abricate_db_dir:
-        raise Exception("Bases abricate non trouvées dans l'image Docker. Vérifiez que l'env abricate_env est bien installé.")
+        raise Exception(
+            "Bases abricate non trouvées. Chemins testés: "
+            + ", ".join(str(c) for c in candidates)
+        )
 
     logger.info(f"[DB Download] kma: bases abricate trouvées: {abricate_db_dir}")
     db_path.mkdir(parents=True, exist_ok=True)
@@ -1378,7 +1378,7 @@ def get_db_status(db_key: str) -> dict:
     if not config:
         return None
 
-    db_path = DATABASES_DIR / config["path"]
+    db_path = Path(config["abs_path"]) if config.get("abs_path") else DATABASES_DIR / config["path"]
 
     # Vérifier si le dossier existe
     exists = db_path.exists()
