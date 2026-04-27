@@ -11,7 +11,7 @@
 ; ===============================================================================
 
 #define MyAppName "MEGAM ARG Detection"
-#define MyAppVersion "3.2"
+#define MyAppVersion "3.2.1"
 #define MyAppPublisher "Rachid Merah"
 #define MyAppURL "https://github.com/rmerah/megam-arg-docker"
 
