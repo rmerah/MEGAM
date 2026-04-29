@@ -18,7 +18,7 @@
 
 ## Installation sur Windows (recommandé)
 
-**1.** Téléchargez l'installeur : **[MEGAM-ARG-Detection-Setup-3.2.exe](https://github.com/rmerah/MEGAM/releases/latest/download/MEGAM-ARG-Detection-Setup-3.2.exe)**
+**1.** Téléchargez l'installeur : **[MEGAM-ARG-Detection-Setup-3.2.1.exe](https://github.com/rmerah/MEGAM/releases/latest/download/MEGAM-ARG-Detection-Setup-3.2.1.exe)**
 
 **2.** Double-cliquez sur le fichier téléchargé
 
