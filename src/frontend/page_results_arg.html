@@ -79,7 +79,7 @@
             </p>
           </div>
           <div class="flex gap-3">
-            <button onclick="generatePDFReport()" class="bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700 transition flex items-center gap-2">
+            <button onclick="requestPDFWithEmail()" class="bg-red-600 text-white px-4 py-2 rounded font-semibold hover:bg-red-700 transition flex items-center gap-2">
               📄 PDF
             </button>
             <button onclick="scrollToFiles()" class="bg-amber-700 text-white px-4 py-2 rounded font-semibold hover:bg-amber-800 transition flex items-center gap-2">
@@ -1666,6 +1666,27 @@
     }
 
     // ===== GÉNÉRATION RAPPORT PDF =====
+    const ANTIBIOTIC_FAMILIES = [
+      { key: 'carbapenem',      label: 'Carbapénèmes',     drugs: 'Imipénème, Méropénème, Ertapénème, Doripénème' },
+      { key: 'beta-lactam',     label: 'Bêta-lactamines',  drugs: 'Amoxicilline, Ampicilline, Pipéracilline/Tazobactam, Ticarcilline' },
+      { key: 'cephalosporin',   label: 'Céphalosporines',  drugs: 'Céfazoline (C1G), Céfuroxime (C2G), Céfotaxime/Ceftriaxone (C3G), Céfépime (C4G)' },
+      { key: 'fluoroquinolone', label: 'Fluoroquinolones', drugs: 'Ciprofloxacine, Lévofloxacine, Ofloxacine, Norfloxacine' },
+      { key: 'aminoglycoside',  label: 'Aminosides',       drugs: 'Gentamicine, Amikacine, Tobramycine, Nétilmicine' },
+      { key: 'tetracycline',    label: 'Tétracyclines',    drugs: 'Tétracycline, Doxycycline, Minocycline' },
+      { key: 'macrolide',       label: 'Macrolides',       drugs: 'Érythromycine, Azithromycine, Clarithromycine' },
+      { key: 'sulfonamide',     label: 'Sulfamides',       drugs: 'Sulfaméthoxazole, Cotrimoxazole (SMX-TMP)' },
+      { key: 'trimethoprim',    label: 'Triméthoprime',    drugs: 'Triméthoprime, Cotrimoxazole (SMX-TMP)' },
+      { key: 'colistin',        label: 'Polymyxines',      drugs: 'Colistine, Polymyxine B' },
+      { key: 'glycopeptide',    label: 'Glycopeptides',    drugs: 'Vancomycine, Teicoplanine' },
+      { key: 'vancomycin',      label: 'Glycopeptides',    drugs: 'Vancomycine, Teicoplanine' },
+      { key: 'rifamycin',       label: 'Rifamycines',      drugs: 'Rifampicine, Rifabutine' },
+      { key: 'chloramphenicol', label: 'Phénicolés',       drugs: 'Chloramphénicol, Thiamphénicol' },
+      { key: 'lincosamide',     label: 'Lincosamides',     drugs: 'Clindamycine, Lincomycine' },
+      { key: 'oxazolidinone',   label: 'Oxazolidinones',   drugs: 'Linézolide, Tédizolide' },
+      { key: 'fosfomycin',      label: 'Fosfomycine',      drugs: 'Fosfomycine' },
+      { key: 'streptogramin',   label: 'Streptogramines',  drugs: 'Pristinamycine, Quinupristine/Dalfopristine' },
+    ];
+
     function generatePDFReport() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
@@ -1791,10 +1812,161 @@
       doc.line(margin, yPos, pageWidth - margin, yPos);
       yPos += 10;
 
+      // ===== PAGE 2 : VUE PRESCRIPTEUR =====
+      doc.addPage();
+      yPos = 20;
+
+      // En-tête vert foncé
+      doc.setFillColor(6, 95, 70);
+      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('2. Vue Prescripteur', pageWidth / 2, 14, { align: 'center' });
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text("Aide à la Décision Thérapeutique — Usage d'orientation uniquement", pageWidth / 2, 24, { align: 'center' });
+      yPos = 44;
+
+      // Organisme & MLST
+      const organism = document.getElementById('ncbi-organism')?.textContent?.trim() || 'Non déterminé';
+      const mlstScheme = document.getElementById('mlst-scheme')?.textContent?.trim() || '-';
+      const sequenceType = document.getElementById('sequence-type')?.textContent?.trim() || '-';
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Organisme : ' + organism, margin, yPos);
+      yPos += 6;
+      doc.text('MLST : ' + mlstScheme + '  —  ' + sequenceType, margin, yPos);
+      yPos += 12;
+
+      // Construire la liste des familles résistantes (CRITICAL & HIGH uniquement)
+      const resistedFamilyLabels = new Set();
+      const avoirTableData = [];
+
+      criticalHighGenes.forEach(function(gene) {
+        if (!gene.resistance) return;
+        const rLow = gene.resistance.toLowerCase();
+        const fam = ANTIBIOTIC_FAMILIES.find(function(f) { return rLow.includes(f.key); });
+        const label = fam ? fam.label : gene.resistance;
+        const drugs = fam ? fam.drugs : '-';
+        if (!resistedFamilyLabels.has(label)) {
+          resistedFamilyLabels.add(label);
+          const genesForFam = criticalHighGenes.filter(function(g) {
+            const rL = (g.resistance || '').toLowerCase();
+            const f2 = ANTIBIOTIC_FAMILIES.find(function(f) { return rL.includes(f.key); });
+            return (f2 ? f2.label : g.resistance) === label;
+          });
+          const geneNames = [...new Set(genesForFam.map(function(g) { return g.gene; }).filter(Boolean))].join(', ');
+          const maxPriority = genesForFam.some(function(g) { return g.priority === 'CRITICAL'; }) ? 'CRITICAL' : 'HIGH';
+          avoirTableData.push([
+            label,
+            drugs,
+            geneNames,
+            { content: maxPriority, styles: { textColor: maxPriority === 'CRITICAL' ? [185, 28, 28] : [234, 88, 12], fontStyle: 'bold' } }
+          ]);
+        }
+      });
+
+      // Tableau "À ÉVITER"
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(185, 28, 28);
+      doc.text('ANTIBIOTIQUES À ÉVITER — Résistances détectées', margin, yPos);
+      yPos += 6;
+      doc.setTextColor(0, 0, 0);
+
+      if (avoirTableData.length > 0) {
+        doc.autoTable({
+          startY: yPos,
+          head: [['Famille', 'Molécules concernées', 'Gène(s) détecté(s)', 'Priorité']],
+          body: avoirTableData,
+          theme: 'grid',
+          headStyles: { fillColor: [185, 28, 28], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 35 },
+            1: { cellWidth: 65, overflow: 'linebreak' },
+            2: { cellWidth: 45, overflow: 'linebreak' },
+            3: { cellWidth: 22 }
+          },
+          margin: { left: margin, right: margin }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+      } else {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        doc.text('Aucune résistance de priorité CRITICAL ou HIGH détectée.', margin, yPos);
+        yPos += 10;
+        doc.setTextColor(0, 0, 0);
+      }
+
+      // Tableau "POTENTIELLEMENT EFFICACES"
+      const efficacesTableData = [];
+      const usedFamLabels = new Set();
+      ANTIBIOTIC_FAMILIES.forEach(function(fam) {
+        if (usedFamLabels.has(fam.label) || resistedFamilyLabels.has(fam.label)) return;
+        usedFamLabels.add(fam.label);
+        efficacesTableData.push([fam.label, fam.drugs]);
+      });
+
+      if (efficacesTableData.length > 0) {
+        if (yPos > 185) { doc.addPage(); yPos = 20; }
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(21, 128, 61);
+        doc.text('FAMILLES POTENTIELLEMENT EFFICACES (pas de résistance détectée)', margin, yPos);
+        yPos += 4;
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
+        doc.text('À confirmer obligatoirement par antibiogramme avant toute prescription', margin, yPos);
+        yPos += 6;
+        doc.setTextColor(0, 0, 0);
+
+        doc.autoTable({
+          startY: yPos,
+          head: [['Famille', 'Molécules disponibles']],
+          body: efficacesTableData,
+          theme: 'grid',
+          headStyles: { fillColor: [21, 128, 61], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          columnStyles: {
+            0: { fontStyle: 'bold', cellWidth: 45 },
+            1: { overflow: 'linebreak' }
+          },
+          margin: { left: margin, right: margin }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Disclaimer en bas de la page prescripteur (position fixe)
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const disclaimerY = pageHeight - 44;
+      doc.setDrawColor(180, 83, 9);
+      doc.setFillColor(255, 247, 237);
+      doc.rect(margin, disclaimerY, pageWidth - margin * 2, 38, 'FD');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(154, 52, 18);
+      doc.text('AVERTISSEMENT — RESPONSABILITÉS', margin + 4, disclaimerY + 7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      doc.text('• La résistance génomique (génotypique) ne garantit pas l\'expression phénotypique du gène détecté.', margin + 4, disclaimerY + 14);
+      doc.text('• Ce document ne remplace en aucun cas un antibiogramme clinique conventionnel.', margin + 4, disclaimerY + 20);
+      doc.text('• Les orientations ci-dessus sont fournies à titre indicatif uniquement.', margin + 4, disclaimerY + 26);
+      doc.text('• Toute décision thérapeutique relève exclusivement de la responsabilité du praticien.', margin + 4, disclaimerY + 32);
+
+      // ===== PAGE 3+ : RÉSULTATS TECHNIQUES =====
+      doc.addPage();
+      yPos = 20;
+
       // ===== RÉSULTATS - GÈNES CRITICAL ET HIGH =====
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('2. Résultats - Gènes Prioritaires (CRITICAL & HIGH)', margin, yPos);
+      doc.text('3. Résultats - Gènes Prioritaires (CRITICAL & HIGH)', margin, yPos);
       yPos += 10;
 
       if (criticalHighGenes.length > 0) {
@@ -1860,7 +2032,7 @@
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      doc.text('3. Classes d\'Antibiotiques Concernées', margin, yPos);
+      doc.text('4. Classes d\'Antibiotiques Concernées', margin, yPos);
       yPos += 8;
 
       doc.setFontSize(10);
@@ -1900,7 +2072,7 @@
       // ===== CONCLUSIONS =====
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('4. Conclusions et Recommandations', margin, yPos);
+      doc.text('5. Conclusions et Recommandations', margin, yPos);
       yPos += 8;
 
       doc.setFontSize(10);
@@ -1992,6 +2164,103 @@
       refreshOutputFiles();
       setInterval(checkRunningJobs, 10000);
     });
+  </script>
+
+  <!-- ===== MODAL EMAIL AVANT PDF ===== -->
+  <div id="pdf-email-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <!-- Fond semi-transparent -->
+    <div class="absolute inset-0 bg-black bg-opacity-50" onclick="skipEmailAndDownload()"></div>
+    <!-- Boîte modale -->
+    <div class="relative bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 z-10">
+      <!-- Icône + titre -->
+      <div class="flex items-center gap-3 mb-4">
+        <div class="bg-red-100 rounded-full p-3">
+          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Votre rapport est prêt</h2>
+          <p class="text-sm text-gray-500">MEGAM ARG Detection</p>
+        </div>
+      </div>
+      <!-- Message -->
+      <p class="text-gray-600 text-sm mb-5">
+        Souhaitez-vous être notifié des mises à jour de MEGAM ?<br>
+        <span class="text-gray-400 text-xs">(nouvelles bases de données, fonctionnalités, corrections)</span>
+      </p>
+      <!-- Champ email -->
+      <input
+        type="email"
+        id="pdf-email-input"
+        placeholder="votre.email@exemple.com"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+        onkeydown="if(event.key==='Enter') submitEmailAndDownload()"
+      />
+      <p id="pdf-email-error" class="text-red-500 text-xs mb-4 hidden">Veuillez entrer une adresse email valide.</p>
+      <!-- Boutons -->
+      <div class="flex flex-col gap-2 mt-2">
+        <button onclick="submitEmailAndDownload()" class="w-full bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition text-sm">
+          📄 Télécharger + s'inscrire aux mises à jour
+        </button>
+        <button onclick="skipEmailAndDownload()" class="w-full bg-gray-100 text-gray-600 py-2 rounded-lg font-medium hover:bg-gray-200 transition text-sm">
+          Télécharger sans s'inscrire
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function requestPDFWithEmail() {
+      // Si déjà inscrit, générer directement le PDF
+      if (localStorage.getItem('megam_email_registered')) {
+        generatePDFReport();
+        return;
+      }
+      // Sinon afficher la modal
+      document.getElementById('pdf-email-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('pdf-email-input').focus(), 100);
+    }
+
+    function submitEmailAndDownload() {
+      const input = document.getElementById('pdf-email-input');
+      const email = input.value.trim();
+      const errorEl = document.getElementById('pdf-email-error');
+
+      // Validation basique
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        errorEl.classList.remove('hidden');
+        input.focus();
+        return;
+      }
+      errorEl.classList.add('hidden');
+
+      // POST silencieux vers Google Form (mode no-cors = pas de retour, mais ça passe)
+      const formData = new FormData();
+      formData.append('entry.1045781291', email);
+      fetch(
+        'https://docs.google.com/forms/d/e/1FAIpQLSeBeBmdiZFiqct-F46Wma-ZlwDNZkhSwYSR9Nq-R1xvSrswoQ/formResponse',
+        { method: 'POST', mode: 'no-cors', body: formData }
+      ).catch(() => {}); // silencieux en cas d'erreur réseau
+
+      // Mémoriser pour ne plus demander
+      localStorage.setItem('megam_email_registered', email);
+
+      closePDFModal();
+      generatePDFReport();
+    }
+
+    function skipEmailAndDownload() {
+      // Mémoriser le refus pour ne plus demander
+      localStorage.setItem('megam_email_registered', 'skipped');
+      closePDFModal();
+      generatePDFReport();
+    }
+
+    function closePDFModal() {
+      document.getElementById('pdf-email-modal').classList.add('hidden');
+      document.getElementById('pdf-email-input').value = '';
+    }
   </script>
 </body>
 </html>

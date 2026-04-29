@@ -107,7 +107,7 @@ jobs:
 
             ## Installation sur Windows
 
-            **1.** Téléchargez `MEGAM-ARG-Detection-Setup-3.2.1.exe` ci-dessous (section **Assets**)
+            **1.** Téléchargez `MEGAM-ARG-Detection-Setup-3.2.2.exe` ci-dessous (section **Assets**)
 
             **2.** Double-cliquez dessus et suivez l'assistant
 
@@ -136,7 +136,7 @@ jobs:
             | Téléchargement de l'image Docker | ~10-15 min |
             | **Lancements suivants** | **~30 secondes** |
           files: |
-            installer/Output/MEGAM-ARG-Detection-Setup-3.2.1.exe
+            installer/Output/MEGAM-ARG-Detection-Setup-3.2.2.exe
           draft: false
           prerelease: false
         env:
