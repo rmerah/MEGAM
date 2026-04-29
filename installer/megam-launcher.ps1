@@ -227,12 +227,45 @@ if (-not $imageExists) {
         exit 1
     }
 } else {
-    # Image deja presente, demarrage rapide
-    "[$(Get-Date)] Image existante, demarrage rapide..." | Out-File $LogFile -Append
-    $form = Show-Progress -Title "MEGAM ARG Detection" -Message "Verification des mises a jour et demarrage...`nSi une mise a jour est disponible, le telechargement peut prendre 10 a 15 minutes.`nLa progression s'affiche dans la fenetre noire ci-dessus."
+    # Image existante — verifier si une mise a jour est disponible sur GHCR
+    "[$(Get-Date)] Image existante, verification des mises a jour..." | Out-File $LogFile -Append
+
+    # Etape 1 : pull silencieux (< 3 sec si a jour, telechargement si nouvelle version dispo)
+    $form = Show-Progress -Title "MEGAM ARG Detection" -Message "Verification des mises a jour...`nSi une nouvelle version est disponible, le telechargement demarrera automatiquement."
+    $form.Refresh()
+
+    $pullOutput = ""
+    $pullSuccess = $false
+    $wasUpdated = $false
 
     try {
-        $cmdArgs = '/c docker compose -f "' + $ComposeFile + '" up -d --pull always'
+        $pullLines = & docker pull ghcr.io/rmerah/megam-arg-detection:latest 2>&1
+        $pullSuccess = ($LASTEXITCODE -eq 0)
+        $pullOutput = $pullLines -join "`n"
+        $wasUpdated = $pullOutput -match "Downloaded newer image"
+        "[$(Get-Date)] Pull: succes=$pullSuccess mise-a-jour=$wasUpdated" | Out-File $LogFile -Append
+    } catch {
+        # Pas de connexion : on continue avec l'image locale
+        "[$(Get-Date)] Pull echoue (pas de connexion ?) : $($_.Exception.Message)" | Out-File $LogFile -Append
+    }
+
+    $form.Close()
+
+    # Etape 2 : demarrer le container
+    if ($wasUpdated) {
+        $form = Show-Progress -Title "MEGAM ARG Detection - Mise a jour" -Message "Nouvelle version installee !`nRedemarrage en cours..."
+    } else {
+        $form = Show-Progress -Title "MEGAM ARG Detection" -Message "Demarrage de l'application...`nVeuillez patienter."
+    }
+    $form.Refresh()
+
+    try {
+        # --force-recreate si nouvelle image, demarrage simple sinon
+        if ($wasUpdated) {
+            $cmdArgs = '/c docker compose -f "' + $ComposeFile + '" up -d --force-recreate'
+        } else {
+            $cmdArgs = '/c docker compose -f "' + $ComposeFile + '" up -d'
+        }
         $proc = Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArgs -PassThru -Wait
         if ($proc.ExitCode -ne 0) {
             throw "docker compose up failed (exit code: $($proc.ExitCode))"
@@ -255,7 +288,6 @@ if (-not $imageExists) {
 
 "[$(Get-Date)] Attente de l'application sur le port $Port..." | Out-File $LogFile -Append
 $appReady = Wait-ForApp -TimeoutSeconds 180
-$form.Close()
 
 if ($appReady) {
     "[$(Get-Date)] Application prete, ouverture du navigateur" | Out-File $LogFile -Append
