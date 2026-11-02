@@ -1,3 +1,8 @@
+> [!IMPORTANT]
+> **Nouvelle version Windows native, sans Docker ni WSL** : [megam-arg-detection.com](https://megam-arg-detection.com) · **New native Windows version, no Docker or WSL required**: [megam-arg-detection.com/en](https://megam-arg-detection.com/en/)
+>
+> Ce dépôt contient la version précédente (v3.2, pipeline Docker). · This repository contains the previous version (v3.2, Docker pipeline).
+
 <p align="center">
   <img src="src/frontend/logo.png" alt="MEGAM ARG Detection" width="400">
 </p>
